@@ -1,0 +1,420 @@
+{
+  "info": {
+    "name": "eAuction Platform",
+    "description": "Complete API collection for the eAuction Platform – Auth, System User Management, Seller Onboarding, Buyer Onboarding.\n\n**Setup:**\n1. Import this collection.\n2. Set `baseUrl` variable if your server is not on `http://localhost:8080`.\n3. Run **Login** first — the test script auto-saves `accessToken` and `refreshToken` as collection variables.\n4. All protected requests use `{{accessToken}}` from Bearer Auth configured at the collection level.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",      "value": "http://localhost:8080", "type": "string" },
+    { "key": "accessToken",  "value": "",                      "type": "string" },
+    { "key": "refreshToken", "value": "",                      "type": "string" },
+    { "key": "clientId",     "value": "2",                     "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+
+    {
+      "name": "Auth",
+      "description": "Authentication endpoints – login, token refresh, logout.",
+      "item": [
+
+        {
+          "name": "Login",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.success && res.data) {",
+                "  pm.collectionVariables.set('accessToken',  res.data.accessToken);",
+                "  pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
+                "  console.log('Tokens saved. Permissions:', res.data.permissions);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"superadmin\",\n  \"password\": \"Admin@123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Authenticates a user. On success the test script automatically stores `accessToken` and `refreshToken` as collection variables.\n\n`identifier` can be username or email."
+          }
+        },
+
+        {
+          "name": "Refresh Token",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.success && res.data) {",
+                "  pm.collectionVariables.set('accessToken', res.data.accessToken);",
+                "  console.log('Access token refreshed.');",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","refresh"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Issues a new access token using the refresh token. Refresh token is taken from the collection variable set by Login."
+          }
+        },
+
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/logout", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","logout"] },
+            "description": "Invalidates the current session. Requires `Authorization: Bearer {{accessToken}}`."
+          }
+        },
+
+        {
+          "name": "Logout All Sessions",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/logout-all", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","logout-all"] },
+            "description": "Revokes all active sessions for the authenticated user across all devices."
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "System User Management",
+      "description": "CRUD for platform-level SYSTEM users. Requires `SYS.USER.*` permissions (SYSTEM_ADMIN role).\n\nBase path: `/api/v1/admin/system/users`",
+      "item": [
+
+        {
+          "name": "Create System User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/admin/system/users", "host": ["{{baseUrl}}"], "path": ["api","v1","admin","system","users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Alice\",\n  \"middleName\": null,\n  \"lastName\": \"Support\",\n  \"username\": \"alice.support\",\n  \"email\": \"alice.support@eauction.internal\",\n  \"phoneNumber\": \"+919876543210\",\n  \"password\": \"Support@123\",\n  \"roleCode\": \"SYSTEM_SUPPORT\",\n  \"designation\": \"Support Executive\",\n  \"employeeCode\": \"EMP-002\",\n  \"branchId\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Creates a new SYSTEM-type user. `roleCode` must be an existing system role (e.g. `SYSTEM_ADMIN`, `SYSTEM_SUPPORT`). Leave `branchId` null to assign to the root HQ branch.\n\nRequired permission: `SYS.USER.CREATE`"
+          }
+        },
+
+        {
+          "name": "List System Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/system/users?page=0&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","v1","admin","system","users"],
+              "query": [
+                { "key": "page", "value": "0",  "description": "Zero-based page number" },
+                { "key": "size", "value": "20", "description": "Page size (max 100)" }
+              ]
+            },
+            "description": "Returns a paginated list of all SYSTEM users, sorted by creation date descending.\n\nRequired permission: `SYS.USER.READ`"
+          }
+        },
+
+        {
+          "name": "Get System User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/system/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","v1","admin","system","users","1"]
+            },
+            "description": "Fetches full details for a single system user by their numeric `userId`.\n\nRequired permission: `SYS.USER.READ`"
+          }
+        },
+
+        {
+          "name": "Update System User Status",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/system/users/2/status?status=INACTIVE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","v1","admin","system","users","2","status"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "INACTIVE",
+                  "description": "One of: ACTIVE | INACTIVE | LOCKED"
+                }
+              ]
+            },
+            "description": "Updates the account status of a system user. Allowed values: `ACTIVE`, `INACTIVE`, `LOCKED`.\n\nRequired permission: `SYS.USER.BLOCK`"
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Seller Onboarding",
+      "description": "Multi-step onboarding for company and individual sellers. All steps require `SYS.CLIENT.APPROVE` unless noted.\n\nCompany flow: Register → Profile → Branch Levels → (optional Branches) → Provision Roles → Create Users\nIndividual flow: Single POST call.",
+      "item": [
+
+        {
+          "name": "Company Seller",
+          "item": [
+
+            {
+              "name": "Step 1 – Register Company",
+              "event": [{
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "const res = pm.response.json();",
+                    "if (res.success && res.data && res.data.clientId) {",
+                    "  pm.collectionVariables.set('clientId', String(res.data.clientId));",
+                    "  console.log('clientId saved:', res.data.clientId);",
+                    "}"
+                  ],
+                  "type": "text/javascript"
+                }
+              }],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/sellers/company", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","sellers","company"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"companyName\": \"Acme Auctions Pvt Ltd\",\n  \"companyNameShort\": \"ACME\",\n  \"emailPrimary\": \"info@acmeauctions.com\",\n  \"mobilePrimary\": \"+919000000001\",\n  \"addressLine1\": \"Plot 12, Industrial Estate\",\n  \"addressLine2\": \"Phase 2\",\n  \"city\": \"Pune\",\n  \"state\": \"Maharashtra\",\n  \"pincode\": \"411057\",\n  \"companyType\": \"PRIVATE_LIMITED\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Creates the `client_register` row (category=SELLER, type=COMPANY) and a shell `client_company_profile`. Returns `clientId` which is saved to the `{{clientId}}` collection variable by the test script.\n\nValid `companyType` values: `COOPERATIVE_BANK` | `FINANCIAL_INSTITUTION` | `GOVT_BODY` | `NGO` | `PRIVATE_LIMITED` | `PROPRIETORSHIP` | `PUBLIC_LIMITED` | `TRUST`\n\nRequired permission: `SYS.CLIENT.APPROVE`"
+              }
+            },
+
+            {
+              "name": "Step 2 – Complete Company Profile",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/sellers/company/{{clientId}}/profile", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","sellers","company","{{clientId}}","profile"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"companyLegalName\": \"Acme Auctions Private Limited\",\n  \"websiteUrl\": \"https://www.acmeauctions.com\",\n  \"establishmentDate\": \"2010-04-01\",\n  \"incorporationDate\": \"2012-06-15\",\n  \"numberOfEmployees\": 150,\n  \"annualTurnover\": 50000000.00,\n  \"businessCategory\": \"E-Commerce\",\n  \"industryType\": \"Auction Services\",\n  \"classification\": \"SME\",\n  \"mobileSecondary\": \"+919000000002\",\n  \"emailSecondary\": \"support@acmeauctions.com\",\n  \"supportEmail\": \"helpdesk@acmeauctions.com\",\n  \"faxNumber\": null\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Updates the company profile details for the given `clientId`. Uses `{{clientId}}` collection variable.\n\nRequired permission: `SYS.CLIENT.APPROVE`"
+              }
+            },
+
+            {
+              "name": "Step 3 – Create Branch Levels",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/sellers/company/{{clientId}}/branches/levels", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","sellers","company","{{clientId}}","branches","levels"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"levels\": [\n    { \"levelCode\": \"HQ\",   \"label\": \"Head Office\",   \"levelOrder\": 1 },\n    { \"levelCode\": \"RO\",   \"label\": \"Regional Office\",\"levelOrder\": 2 },\n    { \"levelCode\": \"ZONE\", \"label\": \"Zone\",            \"levelOrder\": 3 }\n  ]\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Defines the branch hierarchy levels for the company and auto-creates the root HQ branch. Levels must be provided in order (1 = topmost).\n\nRequired permission: `SYS.CLIENT.APPROVE`"
+              }
+            },
+
+            {
+              "name": "Step 3b – Create Additional Branch",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/sellers/company/{{clientId}}/branches", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","sellers","company","{{clientId}}","branches"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"levelId\": 2,\n  \"parentBranchId\": 1,\n  \"branchCode\": \"ACME-RO-WEST\",\n  \"branchName\": \"West Regional Office\",\n  \"branchCity\": \"Mumbai\",\n  \"branchState\": \"Maharashtra\",\n  \"branchDistrict\": \"Mumbai Suburban\",\n  \"branchCountry\": \"India\",\n  \"branchAddress\": \"Floor 5, BKC Tower, Bandra\",\n  \"pinCode\": \"400051\",\n  \"phonePrimary\": \"+912240000001\",\n  \"emailPrimary\": \"west@acmeauctions.com\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Creates a child branch under an existing parent. `levelId` must match one of the levels created in Step 3. `parentBranchId` is the ID returned by the levels step for the HQ branch.\n\nRequired permission: `SELLER.BRANCH.CREATE`"
+              }
+            },
+
+            {
+              "name": "Step 4 – Provision Default Roles",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/sellers/company/{{clientId}}/roles", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","sellers","company","{{clientId}}","roles"] },
+                "description": "Clones all SELLER_* role templates from `master_role_templates` into `master_roles` for this client, with permissions copied from `master_role_template_permissions`. No request body needed.\n\nRequired permission: `SYS.CLIENT.APPROVE`"
+              }
+            },
+
+            {
+              "name": "Step 5 – Create Seller User",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/sellers/company/{{clientId}}/users", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","sellers","company","{{clientId}}","users"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Raj\",\n  \"middleName\": null,\n  \"lastName\": \"Sharma\",\n  \"username\": \"raj.sharma\",\n  \"email\": \"raj.sharma@acmeauctions.com\",\n  \"phoneNumber\": \"+919111111101\",\n  \"password\": \"Seller@123\",\n  \"roleCode\": \"SELLER_ADMIN\",\n  \"branchId\": 1,\n  \"designation\": \"Admin Manager\",\n  \"employeeCode\": \"ACME-001\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Creates a user under the seller company. `roleCode` must be a SELLER_* role provisioned in Step 4. `branchId` must be a branch created in Step 3.\n\nRequired permission: `SELLER.USER.CREATE`"
+              }
+            },
+
+            {
+              "name": "Get Onboarding Status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/sellers/{{clientId}}/status", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","sellers","{{clientId}}","status"] },
+                "description": "Returns the current registration status and completed steps for a seller client.\n\nRequired permission: `SYS.CLIENT.READ`"
+              }
+            }
+
+          ]
+        },
+
+        {
+          "name": "Individual Seller",
+          "item": [
+
+            {
+              "name": "Register Individual Seller",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/sellers/individual", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","sellers","individual"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Priya\",\n  \"middleName\": null,\n  \"lastName\": \"Patel\",\n  \"username\": \"priya.patel\",\n  \"email\": \"priya.patel@example.com\",\n  \"mobilePrimary\": \"+919222222201\",\n  \"password\": \"Seller@123\",\n  \"addressLine1\": \"23 MG Road\",\n  \"addressLine2\": null,\n  \"city\": \"Ahmedabad\",\n  \"state\": \"Gujarat\",\n  \"pincode\": \"380001\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Single-step registration for an individual seller. Creates `client_register` (type=INDIVIDUAL) + `user_register` + assigns default `SELLER_INDIVIDUAL` role. No authentication required — self-registration flow."
+              }
+            }
+
+          ]
+        }
+
+      ]
+    },
+
+    {
+      "name": "Buyer Onboarding",
+      "description": "Onboarding for company and individual buyers.\n\nCompany flow: Register → Create User\nIndividual flow: Single POST call.",
+      "item": [
+
+        {
+          "name": "Company Buyer",
+          "item": [
+
+            {
+              "name": "Step 1 – Register Company Buyer",
+              "event": [{
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "const res = pm.response.json();",
+                    "if (res.success && res.data && res.data.clientId) {",
+                    "  pm.collectionVariables.set('clientId', String(res.data.clientId));",
+                    "  console.log('Buyer clientId saved:', res.data.clientId);",
+                    "}"
+                  ],
+                  "type": "text/javascript"
+                }
+              }],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/buyers/company", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","buyers","company"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"companyName\": \"Horizon Infra Ltd\",\n  \"companyNameShort\": \"HORIZON\",\n  \"emailPrimary\": \"procurement@horizon.com\",\n  \"mobilePrimary\": \"+919333333301\",\n  \"addressLine1\": \"Tower B, DLF Cyber City\",\n  \"addressLine2\": \"Phase 3\",\n  \"city\": \"Gurugram\",\n  \"state\": \"Haryana\",\n  \"pincode\": \"122002\",\n  \"companyType\": \"PUBLIC_LIMITED\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Creates `client_register` (category=BUYER, type=COMPANY), provisions BUYER_* roles from templates, and auto-creates a root branch. Returns `clientId` which is saved to `{{clientId}}`.\n\nRequired permission: `SYS.CLIENT.APPROVE`"
+              }
+            },
+
+            {
+              "name": "Step 2 – Create Company Buyer User",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/buyers/company/{{clientId}}/users", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","buyers","company","{{clientId}}","users"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Vikram\",\n  \"middleName\": null,\n  \"lastName\": \"Mehta\",\n  \"username\": \"vikram.mehta\",\n  \"email\": \"vikram.mehta@horizon.com\",\n  \"phoneNumber\": \"+919333333302\",\n  \"password\": \"Buyer@1234\",\n  \"designation\": \"Procurement Head\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Creates the single authorised buyer user for the company. Assigned the `BUYER_ADMIN` role and the root branch automatically.\n\nRequired permission: `BUYER.USER.CREATE`"
+              }
+            },
+
+            {
+              "name": "Get Onboarding Status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/buyers/{{clientId}}/status", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","buyers","{{clientId}}","status"] },
+                "description": "Returns the current registration status and completed steps for a buyer client.\n\nRequired permission: `SYS.CLIENT.READ`"
+              }
+            }
+
+          ]
+        },
+
+        {
+          "name": "Individual Buyer",
+          "item": [
+
+            {
+              "name": "Register Individual Buyer",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/onboarding/buyers/individual", "host": ["{{baseUrl}}"], "path": ["api","v1","onboarding","buyers","individual"] },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Neha\",\n  \"middleName\": null,\n  \"lastName\": \"Singh\",\n  \"username\": \"neha.singh\",\n  \"email\": \"neha.singh@example.com\",\n  \"mobilePrimary\": \"+919444444401\",\n  \"password\": \"Buyer@1234\",\n  \"addressLine1\": \"15 Civil Lines\",\n  \"addressLine2\": null,\n  \"city\": \"Jaipur\",\n  \"state\": \"Rajasthan\",\n  \"pincode\": \"302006\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "description": "Single-step self-registration for an individual buyer. Creates `client_register` (type=INDIVIDUAL) + `user_register` + assigns default `BUYER_INDIVIDUAL` role. No authentication required."
+              }
+            }
+
+          ]
+        }
+
+      ]
+    }
+
+  ]
+}
